@@ -54,14 +54,10 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("MissingPermission")
     suspend fun findDevice(deviceName: String): BluetoothDevice? {
-        return suspendCoroutine { continuation ->
-            bluetoothScanner.bondedDevices { devices ->
-                continuation.resume(devices.find { device ->
-                    device.name.startsWith(
-                        deviceName
-                    )
-                })
-            }
+        return bluetoothScanner.bondedDevices().find { device ->
+            device.name.startsWith(
+                deviceName
+            )
         }
     }
 

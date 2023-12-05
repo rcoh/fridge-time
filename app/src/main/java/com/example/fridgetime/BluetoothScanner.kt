@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothLeAudio
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -14,6 +15,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CompletableDeferred
 
 class BluetoothScanner(private val context: ComponentActivity) {
     val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -21,35 +23,40 @@ class BluetoothScanner(private val context: ComponentActivity) {
     private val discoveredDevices = mutableListOf<BluetoothDevice>()
     private val bluetoothPermissionScan = Manifest.permission.BLUETOOTH_SCAN
     private val bluetoothPermissionConnect = Manifest.permission.BLUETOOTH_CONNECT
+    private val permissionsGranted: CompletableDeferred<Boolean> = CompletableDeferred(null)
 
-    private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
 
-    fun bondedDevices(callback: (List<BluetoothDevice>) -> Unit) {
+    private val requestPermissionLauncher: ActivityResultLauncher<Array<String>> =
+        context.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { isGranted ->
+            if (isGranted.values.all { it }) {
+                permissionsGranted.complete(true)
+            } else {
+                permissionsGranted.complete(false)
+            }
+        }
+
+
+    suspend fun bondedDevices(): List<BluetoothDevice> {
         if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.BLUETOOTH_CONNECT
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            requestPermissions(false, callback)
-        } else {
-            callback(bluetoothAdapter?.bondedDevices?.toList() ?: listOf())
-        }
-
-    }
-    private fun requestPermissions(scan: Boolean, callback: (List<BluetoothDevice>) -> Unit) {
-        requestPermissionLauncher =
-            context.registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { isGranted ->
-                if (isGranted.values.all { it }) {
-                    if (scan) {
-                        startScanning(callback)
-                    } else {
-                        callback(bluetoothAdapter?.bondedDevices?.toList() ?: listOf())
-                    }
-                } else {
-                    println("no permissions: $isGranted")
-                }
+            if (!requestPermissions()) {
+                return listOf()
             }
-        requestPermissionLauncher.launch(arrayOf(bluetoothPermissionScan, bluetoothPermissionConnect))
+        }
+        return bluetoothAdapter?.bondedDevices?.toList() ?: listOf()
+    }
+
+    private suspend fun requestPermissions(): Boolean {
+        requestPermissionLauncher.launch(
+            arrayOf(
+                bluetoothPermissionScan,
+                bluetoothPermissionConnect
+            )
+        )
+        return permissionsGranted.await()
     }
 
     private val receiver = object : BroadcastReceiver() {
@@ -75,7 +82,7 @@ class BluetoothScanner(private val context: ComponentActivity) {
         }
     }
 
-    fun startScanning(callback: (List<BluetoothDevice>) -> Unit) {
+    suspend fun startScanning(callback: (List<BluetoothDevice>) -> Unit) {
         println("starting to scan...")
         deviceDiscoveryCallback = callback
         discoveredDevices.clear()
@@ -87,7 +94,7 @@ class BluetoothScanner(private val context: ComponentActivity) {
         ) {
             // Request Bluetooth permission
             println("requesting permissions")
-            requestPermissions(true, callback)
+            requestPermissions()
         } else {
             println("starting discovery")
             // Permission already granted, start scanning
