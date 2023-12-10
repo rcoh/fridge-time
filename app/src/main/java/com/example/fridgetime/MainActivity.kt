@@ -18,37 +18,42 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+
+data class Model(val printer: DatePrinter? = null, val message: String? = null, val state: State) {
+    fun connecting(): Boolean = state == State.Connecting
+
+    fun canPrint(): Boolean = state == State.Connected
+}
 
 sealed class State(val message: String) {
     object AppStartup : State("App is starting...")
     object Connecting : State("Connecting to printer")
     object Connected : State("Printer is connected!")
+
+    object Printing : State("Printing...")
     data class ConnectFailed(val error: String) : State("Connect failed ($error)")
 }
 
 class MainActivity : ComponentActivity() {
     private val bluetoothScanner = BluetoothScanner(this)
-    private var model: Model = Model(null, state = State.AppStartup)
+    private val modelFlow = MutableStateFlow(Model(null, state = State.AppStartup))
 
     private fun updateModel(update: (Model) -> Model) {
-        this.model = update(this.model)
-        runOnUiThread {
-            setContent { Ui(this.model) }
-        }
+        runOnUiThread { modelFlow.update(update) }
     }
 
 
@@ -63,10 +68,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        updateModel { x -> x }
         lifecycleScope.launch(Dispatchers.IO) {
             connectPrinter()
         }
+        setContent { Ui(modelFlow) }
     }
 
     private suspend fun connectPrinter() {
@@ -89,20 +94,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun printToday(printer: DatePrinter): () -> Unit {
-        return { lifecycleScope.launch { printer.printToday() } }
+        return { lifecycleScope.launch { print { printer.printToday() } } }
     }
 
     private fun printTomorrow(printer: DatePrinter): () -> Unit {
-        return { lifecycleScope.launch { printer.printTomorrow() } }
+        return { lifecycleScope.launch { print { printer.printTomorrow() } } }
     }
 
     private fun printText(printer: DatePrinter, text: String): () -> Unit {
-        return { lifecycleScope.launch { printer.printText(text) } }
+        return { lifecycleScope.launch { print { printer.printText(text) } } }
+    }
+
+    private suspend fun print(f: suspend () -> Unit) {
+        updateModel { it.copy(state = State.Printing) }
+        f()
+        updateModel { it.copy(state = State.Connected) }
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun Ui(model: Model) {
+    private fun Ui(flow: StateFlow<Model>) {
+        val model by flow.collectAsState()
         var customText by remember { mutableStateOf("") }
 
         Column(
@@ -119,13 +131,13 @@ class MainActivity : ComponentActivity() {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(onClick = model.printer?.let { printToday(it) } ?: {},
-                    enabled = model.printer != null
+                    enabled = model.canPrint()
                 ) {
                     Text("Print Today")
                 }
 
                 Button(onClick = model.printer?.let { printTomorrow(it) } ?: {},
-                    enabled = model.printer != null
+                    enabled = model.canPrint()
                 ) {
                     Text("Print Tomorrow")
                 }
@@ -173,8 +185,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(onClick = model.printer?.let { printText(it, customText) } ?: {},
-                    enabled = model.printer != null && !model.connecting()
+                Button(onClick = model.printer?.let { printer ->
+                    {
+                        printText(printer, customText)()
+                        customText = ""
+                    }
+                } ?: {},
+                    enabled = model.canPrint()
                 ) {
                     Text("Print Custom Text")
                 }
@@ -182,62 +199,5 @@ class MainActivity : ComponentActivity() {
 
         }
     }
-
-
-    @Composable
-    private fun UiOld(model: Model) {
-        return Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Row to align buttons horizontally
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                // "Print Today" button
-                Button(onClick = model.printer?.let { printToday(it) } ?: {},
-                    enabled = model.printer != null
-                ) {
-                    Text("Print Today")
-                }
-
-                // "Print Tomorrow" button
-                Button(onClick = model.printer?.let { printTomorrow(it) } ?: {},
-                    enabled = model.printer != null
-                ) {
-                    Text("Print Tomorrow")
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                val text = when (model.connecting()) {
-                    true -> "Connecting..."
-                    false -> "Reconnect printer"
-                }
-                Button(onClick = {
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        connectPrinter()
-                    }
-                }, enabled = !model.connecting()) {
-                    Text(text = text)
-                }
-            }
-
-            Text(
-                text = model.state.message,
-                //style = MaterialTheme.typography.displayMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        }
-    }
 }
 
-data class Model(val printer: DatePrinter? = null, val message: String? = null, val state: State) {
-    fun connecting(): Boolean = state == State.Connecting
-}
