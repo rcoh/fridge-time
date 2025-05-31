@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
             if (!client.connected()) {
                 State.ConnectFailed("printer paired but not currently connected")
             } else {
-                val printer = DatePrinter(client)
+                val printer = DatePrinter(this, client)
                 updateModel { it.copy(printer = printer, state = State.Connected) }
                 return
             }
@@ -95,6 +95,10 @@ class MainActivity : ComponentActivity() {
 
     private fun printToday(printer: DatePrinter): () -> Unit {
         return { lifecycleScope.launch { print { printer.printToday() } } }
+    }
+
+    private fun queryState(printer: DatePrinter): () -> Unit {
+        return { lifecycleScope.launch { print { printer.printerState() } } }
     }
 
     private fun printTomorrow(printer: DatePrinter): () -> Unit {
@@ -140,6 +144,12 @@ class MainActivity : ComponentActivity() {
                     enabled = model.canPrint()
                 ) {
                     Text("Print Tomorrow")
+                }
+
+                Button(onClick = model.printer?.let { queryState(it) } ?: {},
+                    enabled = model.canPrint()
+                ) {
+                    Text("Query State")
                 }
             }
 

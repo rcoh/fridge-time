@@ -1,5 +1,7 @@
 package com.example.fridgetime
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -10,9 +12,70 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class DatePrinter(private val rawPrinterClient: NiimbotPrinterClient) {
+class DatePrinter(private val context: Context, private val rawPrinterClient: NiimbotPrinterClient) {
+    private val sharedPreferences: SharedPreferences =
+        context.getSharedPreferences("BarcodeWidthCache", Context.MODE_PRIVATE)
+
+    companion object {
+        private const val CACHE_KEY_PREFIX = "barcode_width_"
+    }
     suspend fun printToday() {
         printDate(LocalDate.now())
+    }
+
+    suspend fun printerState() {
+        val rfid = rawPrinterClient.getRfid()
+        val barcode = rfid?.get("barcode") as? String
+        if (barcode != null) {
+            val labelQuery = NiimbotApiService().getLabelWidth(barcode)
+            println(labelQuery)
+        } else {
+            println("failed to get barcode. rfid: $rfid")
+        }
+    }
+
+    private suspend fun printWidth(): Result<Int> {
+        val rfid = rawPrinterClient.getRfid()
+        val barcode = rfid?.get("barcode") as? String
+        if (barcode == null) {
+            println("failed to get barcode. rfid: $rfid")
+            return Result.failure(Exception("failed to get barcode. rfid: $rfid"))
+        }
+        return getWidthForBarcode(barcode).map { it * 8 }
+    }
+
+    private suspend fun getWidthForBarcode(barcodeType: String): Result<Int> {
+        // 1. Try to get the width from the cache
+        val cachedWidth = getCachedWidth(barcodeType)
+        if (cachedWidth != null) {
+            println("Cache hit for barcode: $barcodeType, width: $cachedWidth")
+            return Result.success(cachedWidth)
+        }
+
+        // 2. If not in cache, fetch from the API
+        println("Cache miss for barcode: $barcodeType. Fetching from API...")
+        val apiWidth = NiimbotApiService().getLabelWidth(barcodeType)
+        if (apiWidth.isFailure) {
+            return apiWidth
+        } else {
+            cacheWidth(barcodeType, apiWidth.getOrThrow())
+        }
+
+        println("Fetched width for barcode: $barcodeType, width: $apiWidth. Cached.")
+
+        return apiWidth
+    }
+
+    private fun cacheWidth(barcodeType: String, width: Int) {
+        with(sharedPreferences.edit()) {
+            putInt(CACHE_KEY_PREFIX + barcodeType, width)
+            apply() // Use apply() for asynchronous saving
+        }
+    }
+
+    private fun getCachedWidth(barcodeType: String): Int? {
+        val width = sharedPreferences.getInt(CACHE_KEY_PREFIX + barcodeType, -1)
+        return if (width == -1) null else width // Return null if not found
     }
 
     suspend fun printTomorrow() {
@@ -26,8 +89,10 @@ class DatePrinter(private val rawPrinterClient: NiimbotPrinterClient) {
     }
 
     suspend fun printText(text: String) {
-        val bmp = createBitmapWithText(text, 240, 96)
-        rawPrinterClient.printLabel(bmp, 240, 96)
+        val width = printWidth().getOrThrow()
+        val height = 96
+        val bmp = createBitmapWithText(text, width, height)
+        rawPrinterClient.printLabel(bmp, width, height)
     }
 }
 

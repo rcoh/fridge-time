@@ -2,7 +2,6 @@ package com.example.fridgetime
 
 import android.annotation.SuppressLint
 import java.nio.ByteBuffer
-import java.util.*
 import android.bluetooth.BluetoothSocket
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothAdapter
@@ -16,7 +15,6 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
 import java.lang.RuntimeException
-import kotlin.experimental.or
 
 class NiimbotPrinterClient(
     address: String,
@@ -44,7 +42,15 @@ class NiimbotPrinterClient(
     enum class InfoEnum(val value: Int) {
         DENSITY(1),
         PRINTSPEED(2),
-        LABELTYPE(1),
+        /*WithGaps = 1
+Black = 2
+Continuous = 3
+Perforated = 4
+Transparent = 5
+PvcTag = 6
+BlackMarkGap = 10
+HeatShrinkTube = 11*/
+        LABELTYPE(3),
         LANGUAGETYPE(6),
         AUTOSHUTDOWNTIME(7),
         DEVICETYPE(8),
@@ -135,24 +141,6 @@ class NiimbotPrinterClient(
                 }.countOneBits()
             }
 
-            private fun invertColors(bitmap: Bitmap): Bitmap {
-                val width = bitmap.width
-                val height = bitmap.height
-                val invertedBitmap = Bitmap.createBitmap(width, height, bitmap.config)
-
-                for (x in 0 until width) {
-                    for (y in 0 until height) {
-                        val pixel = bitmap.getPixel(x, y)
-                        val red = 255 - Color.red(pixel)
-                        val green = 255 - Color.green(pixel)
-                        val blue = 255 - Color.blue(pixel)
-                        invertedBitmap.setPixel(x, y, Color.rgb(red, green, blue))
-                    }
-                }
-
-                return invertedBitmap
-            }
-
             private fun toGrayscale(bitmap: Bitmap): Bitmap {
                 val width = bitmap.width
                 val height = bitmap.height
@@ -188,43 +176,6 @@ class NiimbotPrinterClient(
 
                 return binaryBitmap
             }
-
-            private fun bitmapToByteArray(bitmap: Bitmap): ByteArray {
-                val width = bitmap.width
-                val height = bitmap.height
-                val byteArraySize = (width * height + 7) / 8 // Round up division
-                val result = ByteArray(byteArraySize)
-
-                var bytePosition = 0
-                var bitPosition = 0
-                var currentByte: Byte = 0
-
-                for (y in 0 until height) {
-                    for (x in 0 until width) {
-                        val pixel = bitmap.getPixel(x, y)
-                        val isWhite = Color.red(pixel) > 128 || Color.green(pixel) > 128 || Color.blue(pixel) > 128
-                        if (isWhite) {
-                            currentByte = currentByte or (1 shl (7 - bitPosition)).toByte()
-                        }
-
-                        bitPosition++
-                        if (bitPosition == 8) {
-                            result[bytePosition] = currentByte
-                            bytePosition++
-                            bitPosition = 0
-                            currentByte = 0
-                        }
-                    }
-                }
-
-                // If there are remaining bits that haven't been written after looping through the pixels
-                if (bitPosition != 0) {
-                    result[bytePosition] = currentByte
-                }
-
-                return result
-            }
-
         }
 
         fun toBytes(): ByteArray {

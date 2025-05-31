@@ -23,6 +23,8 @@ class BluetoothScanner(private val context: ComponentActivity) {
     private val discoveredDevices = mutableListOf<BluetoothDevice>()
     private val bluetoothPermissionScan = Manifest.permission.BLUETOOTH_SCAN
     private val bluetoothPermissionConnect = Manifest.permission.BLUETOOTH_CONNECT
+    private val internet = Manifest.permission.INTERNET
+    private val permissions = listOf(bluetoothPermissionScan, bluetoothPermissionConnect, internet)
     private val permissionsGranted: CompletableDeferred<Boolean> = CompletableDeferred(null)
 
 
@@ -37,11 +39,12 @@ class BluetoothScanner(private val context: ComponentActivity) {
 
 
     suspend fun bondedDevices(): List<BluetoothDevice> {
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (permissions.any {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    it
+                ) != PackageManager.PERMISSION_GRANTED
+            }) {
             if (!requestPermissions()) {
                 return listOf()
             }
@@ -53,7 +56,8 @@ class BluetoothScanner(private val context: ComponentActivity) {
         requestPermissionLauncher.launch(
             arrayOf(
                 bluetoothPermissionScan,
-                bluetoothPermissionConnect
+                bluetoothPermissionConnect,
+                internet
             )
         )
         return permissionsGranted.await()
@@ -89,9 +93,12 @@ class BluetoothScanner(private val context: ComponentActivity) {
         val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
         // Check if Bluetooth permission is granted
-        if (ContextCompat.checkSelfPermission(context, bluetoothPermissionConnect)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (permissions.any {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    it
+                ) != PackageManager.PERMISSION_GRANTED
+            }) {
             // Request Bluetooth permission
             println("requesting permissions")
             requestPermissions()
