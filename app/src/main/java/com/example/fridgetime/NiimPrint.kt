@@ -465,14 +465,6 @@ HeatShrinkTube = 11*/
         return mapOf("page" to page, "progress1" to progress1, "progress2" to progress2)
     }
 
-    private fun resizeBitmap(source: Bitmap, desiredWidth: Int, desiredHeight: Int): Bitmap {
-        val scaleWidth = desiredWidth.toFloat() / source.width
-        val scaleHeight = desiredHeight.toFloat() / source.height
-        val matrix = Matrix()
-        matrix.postScale(scaleWidth, scaleHeight)
-        return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
-    }
-
     suspend fun printLabel(image: Bitmap, width: Int, height: Int, labelQty: Int = 1, labelType: Int = 1, labelDensity: Int = 2) = withContext(Dispatchers.IO) {
         val rotatedPreviewImage = if (image.width != width || image.height != height){
             throw RuntimeException("image wrong size")

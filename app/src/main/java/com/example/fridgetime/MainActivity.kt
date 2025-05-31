@@ -17,7 +17,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,9 +67,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        lifecycleScope.launch(Dispatchers.IO) {
+        // Start the service
+        val serviceIntent = android.content.Intent(this, AutoPrintService::class.java)
+        startForegroundService(serviceIntent)
+        /*lifecycleScope.launch(Dispatchers.IO) {
             connectPrinter()
-        }
+        }*/
         setContent { Ui(modelFlow) }
     }
 
