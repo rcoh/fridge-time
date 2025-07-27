@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fridgetime"
-    compileSdk = 33
+    namespace = "com.melrose.fridgetime"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.fridgetime"
-        minSdk = 33
-        targetSdk = 33
+        applicationId = "com.melrose.fridgetime"
+        minSdk = 31
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -57,8 +57,9 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
-    implementation("androidx.activity:activity-compose:1.7.0")
     implementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    implementation("androidx.activity:activity-compose:1.8.2")
+
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")

@@ -1,4 +1,4 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

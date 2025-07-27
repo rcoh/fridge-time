@@ -1,4 +1,4 @@
-package com.example.fridgetime.ui.theme
+package com.melrose.fridgetime.ui.theme
 
 import android.app.Activity
 import android.os.Build

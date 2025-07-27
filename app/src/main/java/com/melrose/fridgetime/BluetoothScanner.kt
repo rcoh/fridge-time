@@ -1,19 +1,15 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothLeAudio
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CompletableDeferred
 
@@ -84,39 +80,5 @@ class BluetoothScanner(private val context: ComponentActivity) {
                 }
             }
         }
-    }
-
-    suspend fun startScanning(callback: (List<BluetoothDevice>) -> Unit) {
-        println("starting to scan...")
-        deviceDiscoveryCallback = callback
-        discoveredDevices.clear()
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
-        // Check if Bluetooth permission is granted
-        if (permissions.any {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    it
-                ) != PackageManager.PERMISSION_GRANTED
-            }) {
-            // Request Bluetooth permission
-            println("requesting permissions")
-            requestPermissions()
-        } else {
-            println("starting discovery")
-            // Permission already granted, start scanning
-            val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
-            filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
-            context.registerReceiver(receiver, filter)
-            //println("cancelling prior discovery: ${bluetoothAdapter?.cancelDiscovery()}")
-            println("discovery started? ${bluetoothAdapter?.startDiscovery()}")
-        }
-
-    }
-
-    @SuppressLint("MissingPermission")
-    fun stopScanning() {
-        //context.unregisterReceiver(receiver)
-        // bluetoothAdapter?.cancelDiscovery()
     }
 }

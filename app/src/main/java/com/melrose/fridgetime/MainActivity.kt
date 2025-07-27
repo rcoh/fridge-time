@@ -1,4 +1,4 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,7 +34,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class Model(val printer: DatePrinter? = null, val message: String? = null, val state: State) {
+data class Model(
+    val printer: DatePrinter? = null,
+    val message: String? = null,
+    val state: State,
+    val backgroundServiceStarted: Boolean
+) {
     fun connecting(): Boolean = state == State.Connecting
 
     fun canPrint(): Boolean = state == State.Connected
@@ -49,7 +56,8 @@ sealed class State(val message: String) {
 
 class MainActivity : ComponentActivity() {
     private val bluetoothScanner = BluetoothScanner(this)
-    private val modelFlow = MutableStateFlow(Model(null, state = State.AppStartup))
+    private val modelFlow =
+        MutableStateFlow(Model(null, state = State.AppStartup, backgroundServiceStarted = false))
 
     private fun updateModel(update: (Model) -> Model) {
         runOnUiThread { modelFlow.update(update) }
@@ -67,12 +75,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         // Start the service
-        val serviceIntent = android.content.Intent(this, AutoPrintService::class.java)
-        startForegroundService(serviceIntent)
-        /*lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(Dispatchers.IO) {
             connectPrinter()
-        }*/
+        }
         setContent { Ui(modelFlow) }
     }
 
@@ -93,6 +100,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         updateModel { it.copy(state = state) }
+    }
+
+    private fun startBackgroundService() {
+        val serviceIntent = android.content.Intent(this, AutoPrintService::class.java)
+        startForegroundService(serviceIntent)
     }
 
     private fun printToday(printer: DatePrinter): () -> Unit {
@@ -126,6 +138,7 @@ class MainActivity : ComponentActivity() {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -136,22 +149,18 @@ class MainActivity : ComponentActivity() {
                     .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Button(onClick = model.printer?.let { printToday(it) } ?: {},
+                Button(
+                    onClick = model.printer?.let { printToday(it) } ?: {},
                     enabled = model.canPrint()
                 ) {
                     Text("Print Today")
                 }
 
-                Button(onClick = model.printer?.let { printTomorrow(it) } ?: {},
+                Button(
+                    onClick = model.printer?.let { printTomorrow(it) } ?: {},
                     enabled = model.canPrint()
                 ) {
                     Text("Print Tomorrow")
-                }
-
-                Button(onClick = model.printer?.let { queryState(it) } ?: {},
-                    enabled = model.canPrint()
-                ) {
-                    Text("Query State")
                 }
             }
 
@@ -197,18 +206,31 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(onClick = model.printer?.let { printer ->
-                    {
-                        printText(printer, customText)()
-                        customText = ""
-                    }
-                } ?: {},
+                Button(
+                    onClick = model.printer?.let { printer ->
+                        {
+                            printText(printer, customText)()
+                            customText = ""
+                        }
+                    } ?: {},
                     enabled = model.canPrint()
                 ) {
                     Text("Print Custom Text")
                 }
             }
-
+            // Divider for visual separation
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            Button(
+                onClick =
+                    {
+                        startBackgroundService()
+                        updateModel { it.copy(backgroundServiceStarted = true) }
+                    },
+                enabled = !model.backgroundServiceStarted
+            ) {
+                val text = if (model.backgroundServiceStarted) "Background Service Running" else "Start Background Service"
+                Text(text)
+            }
         }
     }
 }

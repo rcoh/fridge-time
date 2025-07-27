@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.fridgetime">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" >
 
     <uses-permission
         android:name="android.permission.BLUETOOTH"
@@ -26,16 +25,18 @@
         >
 
         <service
-            android:name="com.example.fridgetime.PrinterConnectionService"
+            android:name="com.melrose.fridgetime.PrinterConnectionService"
+            android:foregroundServiceType="connectedDevice"
             android:exported="false" />
         <service
-            android:name=".AutoPrintService"
+            android:name="com.melrose.fridgetime.AutoPrintService"
             android:enabled="true"
+            android:foregroundServiceType="connectedDevice"
             android:exported="false" />
         <activity
             android:exported="true"
             android:theme="@style/Theme.FridgeTime"
-            android:name="com.example.fridgetime.MainActivity">
+            android:name="com.melrose.fridgetime.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

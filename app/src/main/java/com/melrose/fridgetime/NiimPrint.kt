@@ -1,4 +1,4 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import android.annotation.SuppressLint
 import java.nio.ByteBuffer
@@ -7,7 +7,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothAdapter
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.Matrix
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -109,10 +108,10 @@ HeatShrinkTube = 11*/
             fun naiveEncoder(img: Bitmap): Sequence<NiimbotPacket> = sequence {
 
                 val imgData = img
-                    .let(::toGrayscale)
+                    .let(Companion::toGrayscale)
                     //.let(::invertColors)
-                    .let(::convertToBinary)
-                    .let(::convertToByteArray)
+                    .let(Companion::convertToBinary)
+                    .let(Companion::convertToByteArray)
 
                 for (x in 0 until img.width) {
                     val lineData = imgData.sliceArray(x * 12 until (x + 1) * 12)
@@ -144,7 +143,7 @@ HeatShrinkTube = 11*/
             private fun toGrayscale(bitmap: Bitmap): Bitmap {
                 val width = bitmap.width
                 val height = bitmap.height
-                val grayscaleBitmap = Bitmap.createBitmap(width, height, bitmap.config)
+                val grayscaleBitmap = Bitmap.createBitmap(width, height, bitmap.config!!)
 
                 for (x in 0 until width) {
                     for (y in 0 until height) {
@@ -164,7 +163,7 @@ HeatShrinkTube = 11*/
             private fun convertToBinary(bitmap: Bitmap): Bitmap {
                 val width = bitmap.width
                 val height = bitmap.height
-                val binaryBitmap = Bitmap.createBitmap(width, height, bitmap.config)
+                val binaryBitmap = Bitmap.createBitmap(width, height, bitmap.config!!)
 
                 for (x in 0 until width) {
                     for (y in 0 until height) {
@@ -496,11 +495,4 @@ HeatShrinkTube = 11*/
         endPrint()
 
     }
-
-    private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {
-        val matrix = Matrix()
-        matrix.postRotate(degrees)
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-    }
-
 }

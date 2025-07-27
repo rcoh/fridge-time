@@ -1,4 +1,4 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import android.Manifest
 import android.app.Service
@@ -7,8 +7,8 @@ import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.ActivityCompat
+import com.melrose.fridgetime.DatePrinter
 import kotlinx.coroutines.*
 
 class PrinterConnectionService : Service() {

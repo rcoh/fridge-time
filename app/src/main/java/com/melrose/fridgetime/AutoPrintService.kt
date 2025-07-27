@@ -1,4 +1,4 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import android.Manifest
 import android.app.Notification
@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.ActivityCompat
+import com.melrose.fridgetime.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

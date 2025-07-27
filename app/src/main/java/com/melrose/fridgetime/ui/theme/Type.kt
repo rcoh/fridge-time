@@ -1,4 +1,4 @@
-package com.example.fridgetime.ui.theme
+package com.melrose.fridgetime.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

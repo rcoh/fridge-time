@@ -1,4 +1,4 @@
-package com.example.fridgetime
+package com.melrose.fridgetime
 
 import android.content.Context
 import android.content.SharedPreferences
